@@ -43,7 +43,13 @@ def mock_momonga(exception=None) -> Generator[Mock]:
             "t phase current": 2,
         }
         client.get_instantaneous_power.return_value = 3
-        client.get_measured_cumulative_energy.return_value = 4
+
+        def get_measured_cumulative_energy_side_effect(reverse=False):
+            return 5 if reverse else 4
+
+        client.get_measured_cumulative_energy.side_effect = (
+            get_measured_cumulative_energy_side_effect
+        )
         client.get_serial_number.return_value = "TEST_SERIAL"
         client.get_manufacturer_code.return_value = b"\x00\x00\x16"
         client.get_standard_version.return_value = "F.0"
