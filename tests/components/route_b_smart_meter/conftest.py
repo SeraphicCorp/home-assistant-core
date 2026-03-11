@@ -3,6 +3,7 @@
 from collections.abc import Generator
 from unittest.mock import AsyncMock, Mock, patch
 
+from momonga import EchonetPropertyCode
 import pytest
 
 from homeassistant.components.route_b_smart_meter.const import DOMAIN
@@ -54,6 +55,9 @@ def mock_momonga(exception=None) -> Generator[Mock]:
         client.get_manufacturer_code.return_value = b"\x00\x00\x16"
         client.get_standard_version.return_value = "F.0"
         client.internal_xmit_interval = 0
+        client.get_properties_to_get_values.return_value = [
+            EchonetPropertyCode.measured_cumulative_energy_reversed,
+        ]
         yield mock_momonga
 
 

@@ -4,7 +4,7 @@ from dataclasses import dataclass
 import logging
 import time
 
-from momonga import Momonga, MomongaError, MomongaResponseNotPossible
+from momonga import EchonetPropertyCode, Momonga, MomongaError
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_DEVICE, CONF_ID, CONF_PASSWORD
@@ -24,7 +24,7 @@ class BRouteData:
     instantaneous_current_t_phase: float
     instantaneous_power: float
     total_consumption: float
-    total_exported: float
+    total_exported: float | None
 
 
 type BRouteConfigEntry = ConfigEntry[BRouteUpdateCoordinator]
@@ -43,6 +43,7 @@ class BRouteUpdateCoordinator(DataUpdateCoordinator[BRouteData]):
     """The B Route update coordinator."""
 
     device_info_data: BRouteDeviceInfo
+    supports_energy_export: bool
 
     def __init__(
         self,
@@ -70,6 +71,11 @@ class BRouteUpdateCoordinator(DataUpdateCoordinator[BRouteData]):
     async def _async_setup(self) -> None:
         def fetch() -> None:
             self.api.open()
+            gettable_properties = self.api.get_properties_to_get_values()
+            self.supports_energy_export = (
+                EchonetPropertyCode.measured_cumulative_energy_reversed
+                in gettable_properties
+            )
             self._fetch_device_info()
 
         await self.hass.async_add_executor_job(fetch)
@@ -97,16 +103,16 @@ class BRouteUpdateCoordinator(DataUpdateCoordinator[BRouteData]):
     def _get_data(self) -> BRouteData:
         """Get the data from API."""
         current = self.api.get_instantaneous_current()
-        try:
-            total_exported = self.api.get_measured_cumulative_energy(reverse=True)
-        except MomongaResponseNotPossible:
-            total_exported = 0.0
         return BRouteData(
             instantaneous_current_r_phase=current["r phase current"],
             instantaneous_current_t_phase=current["t phase current"],
             instantaneous_power=self.api.get_instantaneous_power(),
             total_consumption=self.api.get_measured_cumulative_energy(),
-            total_exported=total_exported,
+            total_exported=(
+                self.api.get_measured_cumulative_energy(reverse=True)
+                if self.supports_energy_export
+                else None
+            ),
         )
 
     async def _async_update_data(self) -> BRouteData:

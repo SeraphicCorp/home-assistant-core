@@ -112,6 +112,8 @@ async def async_setup_entry(
     async_add_entities(
         SmartMeterBRouteSensor(coordinator, description)
         for description in SENSOR_DESCRIPTIONS
+        if description.key != ATTR_API_TOTAL_EXPORTED
+        or coordinator.supports_energy_export
     )
 
 
