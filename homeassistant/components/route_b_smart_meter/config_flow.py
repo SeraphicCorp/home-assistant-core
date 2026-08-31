@@ -3,7 +3,7 @@
 import logging
 from typing import Any, override
 
-from momonga import Momonga, MomongaSkJoinFailure, MomongaSkScanFailure
+from momonga import MomongaSkJoinFailure, MomongaSkScanFailure
 import voluptuous as vol
 
 from homeassistant.components.usb import (
@@ -16,15 +16,10 @@ from homeassistant.const import CONF_DEVICE, CONF_ID, CONF_PASSWORD
 from homeassistant.core import callback
 from homeassistant.helpers.service_info.usb import UsbServiceInfo
 
-from .const import DOMAIN, ENTRY_TITLE
+from .const import CONF_SUPPORTS_TOTAL_EXPORTED, DOMAIN, ENTRY_TITLE
+from .coordinator import detect_supports_total_exported
 
 _LOGGER = logging.getLogger(__name__)
-
-
-def _validate_input(device: str, id: str, password: str) -> None:
-    """Validate the user input allows us to connect."""
-    with Momonga(dev=device, rbid=id, pwd=password):
-        pass
 
 
 def _human_readable_device_name(port: UsbServiceInfo | USBDevice) -> str:
@@ -41,7 +36,7 @@ def _human_readable_device_name(port: UsbServiceInfo | USBDevice) -> str:
 class BRouteConfigFlow(ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Smart Meter B Route."""
 
-    VERSION = 1
+    VERSION = 2
 
     device: UsbServiceInfo | None = None
 
@@ -74,8 +69,8 @@ class BRouteConfigFlow(ConfigFlow, domain=DOMAIN):
         device_options = await self._get_usb_devices()
         if user_input is not None:
             try:
-                await self.hass.async_add_executor_job(
-                    _validate_input,
+                supports_total_exported = await self.hass.async_add_executor_job(
+                    detect_supports_total_exported,
                     user_input[CONF_DEVICE],
                     user_input[CONF_ID],
                     user_input[CONF_PASSWORD],
@@ -92,7 +87,13 @@ class BRouteConfigFlow(ConfigFlow, domain=DOMAIN):
                     user_input[CONF_ID], raise_on_progress=False
                 )
                 self._abort_if_unique_id_configured()
-                return self.async_create_entry(title=ENTRY_TITLE, data=user_input)
+                return self.async_create_entry(
+                    title=ENTRY_TITLE,
+                    data={
+                        **user_input,
+                        CONF_SUPPORTS_TOTAL_EXPORTED: supports_total_exported,
+                    },
+                )
 
         discovered_device_id, discovered_device_name = (
             self._get_discovered_device_id_and_name(device_options)

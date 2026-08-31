@@ -3,9 +3,13 @@
 from collections.abc import Generator
 from unittest.mock import AsyncMock, Mock, patch
 
+from momonga import EchonetPropertyCode
 import pytest
 
-from homeassistant.components.route_b_smart_meter.const import DOMAIN
+from homeassistant.components.route_b_smart_meter.const import (
+    CONF_SUPPORTS_TOTAL_EXPORTED,
+    DOMAIN,
+)
 from homeassistant.const import CONF_DEVICE, CONF_ID, CONF_PASSWORD
 from homeassistant.core import HomeAssistant
 
@@ -26,15 +30,9 @@ def mock_setup_entry() -> Generator[AsyncMock]:
 def mock_momonga(exception=None) -> Generator[Mock]:
     """Mock for Momonga class."""
 
-    with (
-        patch(
-            "homeassistant.components.route_b_smart_meter.coordinator.Momonga",
-        ) as mock_momonga,
-        patch(
-            "homeassistant.components.route_b_smart_meter.config_flow.Momonga",
-            new=mock_momonga,
-        ),
-    ):
+    with patch(
+        "homeassistant.components.route_b_smart_meter.coordinator.Momonga",
+    ) as mock_momonga:
         client = mock_momonga.return_value
         client.__enter__.return_value = client
         client.__exit__.return_value = None
@@ -45,6 +43,9 @@ def mock_momonga(exception=None) -> Generator[Mock]:
         }
         client.get_instantaneous_power.return_value = 3.0
         client.get_measured_cumulative_energy.return_value = 4.0
+        client.get_properties_to_get_values.return_value = {
+            EchonetPropertyCode.measured_cumulative_energy_reversed
+        }
         client.get_serial_number.return_value = "TEST_SERIAL"
         client.get_manufacturer_code.return_value = b"\x00\x00\x16"
         client.get_standard_version.return_value = "F.0"
@@ -69,9 +70,10 @@ def mock_config_entry(
     """Create a mock config entry."""
     entry = MockConfigEntry(
         domain=DOMAIN,
-        data=user_input,
+        data={**user_input, CONF_SUPPORTS_TOTAL_EXPORTED: True},
         entry_id="01234567890123456789012345F789",
         unique_id="123456",
+        version=2,
     )
     entry.add_to_hass(hass)
     return entry

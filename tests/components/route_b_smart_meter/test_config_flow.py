@@ -3,10 +3,14 @@
 from collections.abc import Generator
 from unittest.mock import AsyncMock, Mock, patch
 
-from momonga import MomongaSkJoinFailure, MomongaSkScanFailure
+from momonga import EchonetPropertyCode, MomongaSkJoinFailure, MomongaSkScanFailure
 import pytest
 
-from homeassistant.components.route_b_smart_meter.const import DOMAIN, ENTRY_TITLE
+from homeassistant.components.route_b_smart_meter.const import (
+    CONF_SUPPORTS_TOTAL_EXPORTED,
+    DOMAIN,
+    ENTRY_TITLE,
+)
 from homeassistant.components.usb import SerialDevice, USBDevice
 from homeassistant.config_entries import SOURCE_USER
 from homeassistant.const import CONF_DEVICE, CONF_ID, CONF_PASSWORD
@@ -61,7 +65,7 @@ async def test_step_user_form(
 
     assert result["type"] is FlowResultType.CREATE_ENTRY
     assert result["title"] == ENTRY_TITLE
-    assert result["data"] == user_input
+    assert result["data"] == {**user_input, CONF_SUPPORTS_TOTAL_EXPORTED: True}
     assert result["result"].unique_id == user_input[CONF_ID]
     mock_setup_entry.assert_called_once()
     mock_serial_ports.assert_called()
@@ -70,6 +74,38 @@ async def test_step_user_form(
         rbid=user_input[CONF_ID],
         pwd=user_input[CONF_PASSWORD],
     )
+
+
+@pytest.mark.parametrize(
+    ("supported_properties", "supports_total_exported"),
+    [
+        ({EchonetPropertyCode.measured_cumulative_energy_reversed}, True),
+        (set(), False),
+    ],
+)
+@pytest.mark.usefixtures("mock_setup_entry", "mock_serial_ports")
+async def test_step_user_form_detects_total_exported_support(
+    hass: HomeAssistant,
+    mock_momonga: Mock,
+    supported_properties: set[EchonetPropertyCode],
+    supports_total_exported: bool,
+    user_input: dict[str, str],
+) -> None:
+    """Test the flow stores whether the meter supports exported energy."""
+    mock_momonga.return_value.get_properties_to_get_values.return_value = (
+        supported_properties
+    )
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": SOURCE_USER}
+    )
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        user_input,
+    )
+    await hass.async_block_till_done()
+
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert result["data"][CONF_SUPPORTS_TOTAL_EXPORTED] == supports_total_exported
 
 
 @pytest.mark.parametrize(
@@ -117,4 +153,4 @@ async def test_step_user_form_errors(
 
     assert result["type"] is FlowResultType.CREATE_ENTRY
     assert result["title"] == ENTRY_TITLE
-    assert result["data"] == user_input
+    assert result["data"] == {**user_input, CONF_SUPPORTS_TOTAL_EXPORTED: True}

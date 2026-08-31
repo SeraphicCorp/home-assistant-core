@@ -5,16 +5,25 @@ import logging
 import time
 from typing import override
 
-from momonga import Momonga, MomongaError
+from momonga import EchonetPropertyCode, Momonga, MomongaError
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_DEVICE, CONF_ID, CONF_PASSWORD
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from .const import DEFAULT_SCAN_INTERVAL, DOMAIN
+from .const import CONF_SUPPORTS_TOTAL_EXPORTED, DEFAULT_SCAN_INTERVAL, DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
+
+
+def detect_supports_total_exported(device: str, rbid: str, password: str) -> bool:
+    """Return whether the meter supports reporting exported (reverse) energy."""
+    with Momonga(dev=device, rbid=rbid, pwd=password) as mo:
+        return (
+            EchonetPropertyCode.measured_cumulative_energy_reversed
+            in mo.get_properties_to_get_values()
+        )
 
 
 @dataclass
@@ -25,6 +34,7 @@ class BRouteData:
     instantaneous_current_t_phase: float | None
     instantaneous_power: float | None
     total_consumption: float | None
+    total_exported: float | None
 
 
 type BRouteConfigEntry = ConfigEntry[BRouteUpdateCoordinator]
@@ -54,6 +64,7 @@ class BRouteUpdateCoordinator(DataUpdateCoordinator[BRouteData]):
         self.device = entry.data[CONF_DEVICE]
         self.bid = entry.data[CONF_ID]
         self._password = entry.data[CONF_PASSWORD]
+        self.supports_total_exported = entry.data[CONF_SUPPORTS_TOTAL_EXPORTED]
 
         self.api = Momonga(dev=self.device, rbid=self.bid, pwd=self._password)
 
@@ -103,11 +114,17 @@ class BRouteUpdateCoordinator(DataUpdateCoordinator[BRouteData]):
         if current is not None:
             current_r = current.get("r phase current")
             current_t = current.get("t phase current")
+        total_exported = (
+            self.api.get_measured_cumulative_energy(reverse=True)
+            if self.supports_total_exported
+            else None
+        )
         return BRouteData(
             instantaneous_current_r_phase=current_r,
             instantaneous_current_t_phase=current_t,
             instantaneous_power=self.api.get_instantaneous_power(),
             total_consumption=self.api.get_measured_cumulative_energy(),
+            total_exported=total_exported,
         )
 
     @override

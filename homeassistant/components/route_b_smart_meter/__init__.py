@@ -2,13 +2,36 @@
 
 import logging
 
-from homeassistant.const import Platform
+from homeassistant.const import CONF_DEVICE, CONF_ID, CONF_PASSWORD, Platform
 from homeassistant.core import HomeAssistant
 
-from .coordinator import BRouteConfigEntry, BRouteUpdateCoordinator
+from .const import CONF_SUPPORTS_TOTAL_EXPORTED
+from .coordinator import (
+    BRouteConfigEntry,
+    BRouteUpdateCoordinator,
+    detect_supports_total_exported,
+)
 
 _LOGGER = logging.getLogger(__name__)
 PLATFORMS: list[Platform] = [Platform.SENSOR]
+
+
+async def async_migrate_entry(hass: HomeAssistant, entry: BRouteConfigEntry) -> bool:
+    """Migrate old config entries to the current version."""
+    if entry.version == 1:
+        supports_total_exported = await hass.async_add_executor_job(
+            detect_supports_total_exported,
+            entry.data[CONF_DEVICE],
+            entry.data[CONF_ID],
+            entry.data[CONF_PASSWORD],
+        )
+        hass.config_entries.async_update_entry(
+            entry,
+            data={**entry.data, CONF_SUPPORTS_TOTAL_EXPORTED: supports_total_exported},
+            version=2,
+        )
+
+    return True
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: BRouteConfigEntry) -> bool:
