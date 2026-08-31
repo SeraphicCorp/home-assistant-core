@@ -127,3 +127,9 @@ class SmartMeterBRouteSensor(CoordinatorEntity[BRouteUpdateCoordinator], SensorE
     def native_value(self) -> StateType:
         """Return the state of the sensor."""
         return self.entity_description.value_accessor(self.coordinator.data)
+
+    @property
+    @override
+    def available(self) -> bool:
+        """Return True if entity is available."""
+        return super().available and self.native_value is not None

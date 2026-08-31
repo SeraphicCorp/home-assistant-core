@@ -38,12 +38,13 @@ def mock_momonga(exception=None) -> Generator[Mock]:
         client = mock_momonga.return_value
         client.__enter__.return_value = client
         client.__exit__.return_value = None
+        # momonga v0.7.0+ can return None values
         client.get_instantaneous_current.return_value = {
-            "r phase current": 1,
-            "t phase current": 2,
+            "r phase current": 1.0,
+            "t phase current": 2.0,
         }
-        client.get_instantaneous_power.return_value = 3
-        client.get_measured_cumulative_energy.return_value = 4
+        client.get_instantaneous_power.return_value = 3.0
+        client.get_measured_cumulative_energy.return_value = 4.0
         client.get_serial_number.return_value = "TEST_SERIAL"
         client.get_manufacturer_code.return_value = b"\x00\x00\x16"
         client.get_standard_version.return_value = "F.0"

@@ -54,7 +54,7 @@
     'last_changed': <ANY>,
     'last_reported': <ANY>,
     'last_updated': <ANY>,
-    'state': '1',
+    'state': '1.0',
   })
 # ---
 # name: test_route_b_smart_meter_sensor_update[sensor.route_b_smart_meter_01234567890123456789012345f789_instantaneous_current_t_phase-entry]
@@ -112,7 +112,7 @@
     'last_changed': <ANY>,
     'last_reported': <ANY>,
     'last_updated': <ANY>,
-    'state': '2',
+    'state': '2.0',
   })
 # ---
 # name: test_route_b_smart_meter_sensor_update[sensor.route_b_smart_meter_01234567890123456789012345f789_instantaneous_power-entry]
@@ -170,7 +170,7 @@
     'last_changed': <ANY>,
     'last_reported': <ANY>,
     'last_updated': <ANY>,
-    'state': '3',
+    'state': '3.0',
   })
 # ---
 # name: test_route_b_smart_meter_sensor_update[sensor.route_b_smart_meter_01234567890123456789012345f789_total_consumption-entry]
@@ -228,6 +228,6 @@
     'last_changed': <ANY>,
     'last_reported': <ANY>,
     'last_updated': <ANY>,
-    'state': '4',
+    'state': '4.0',
   })
 # ---

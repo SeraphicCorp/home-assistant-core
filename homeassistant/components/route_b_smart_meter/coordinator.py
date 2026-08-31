@@ -21,10 +21,10 @@ _LOGGER = logging.getLogger(__name__)
 class BRouteData:
     """Class for data of the B Route."""
 
-    instantaneous_current_r_phase: float
-    instantaneous_current_t_phase: float
-    instantaneous_power: float
-    total_consumption: float
+    instantaneous_current_r_phase: float | None
+    instantaneous_current_t_phase: float | None
+    instantaneous_power: float | None
+    total_consumption: float | None
 
 
 type BRouteConfigEntry = ConfigEntry[BRouteUpdateCoordinator]
@@ -98,9 +98,14 @@ class BRouteUpdateCoordinator(DataUpdateCoordinator[BRouteData]):
     def _get_data(self) -> BRouteData:
         """Get the data from API."""
         current = self.api.get_instantaneous_current()
+        current_r = None
+        current_t = None
+        if current is not None:
+            current_r = current.get("r phase current")
+            current_t = current.get("t phase current")
         return BRouteData(
-            instantaneous_current_r_phase=current["r phase current"],
-            instantaneous_current_t_phase=current["t phase current"],
+            instantaneous_current_r_phase=current_r,
+            instantaneous_current_t_phase=current_t,
             instantaneous_power=self.api.get_instantaneous_power(),
             total_consumption=self.api.get_measured_cumulative_energy(),
         )
